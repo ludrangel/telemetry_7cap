@@ -1,3 +1,4 @@
+//falta configuração JSON e desativar CRC      
 #include <LoRa.h>
 #include <SPI.h>
 #include <WiFi.h>
