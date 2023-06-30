@@ -4,6 +4,7 @@
 #include <SPI.h> //responsável pela comunicação serial
 #include <Wire.h>  //responsável pela comunicação i2c
 
+
 #define SCK     5    // GPIO5  -- SX127x's SCK
 #define MISO    19   // GPIO19 -- SX127x's MISO
 #define MOSI    27   // GPIO27 -- SX127x -- SX127x's MOSI
@@ -11,17 +12,22 @@
 #define RST     14   // GPIO14 -- SX127x's RESET
 #define DI00    26   // GPIO26 -- SX127x's IRQ(Interrupt Request)
 
+
 #define BAND    915E6   // Frequência do rádio - podemos utilizar ainda: 433E6, 868E6, 915E6
 #define PABOOST true
+
 
 //parametros: address,SDA,SCL 
 SSD1306Wire display(0x3c, 4, 15); //construtor do objeto que controlaremos o display
 
+
 //variável responsável por armazenar o valor do contador (enviaremos esse valor para o outro Lora)
 unsigned int counter = 0;
 
+
 //Declare um array de caracteres para payload
 char payload[256];
+
 
 // Configuração do Modbus
 #define MODBUS_SERIAL Serial // Comunicação serial a ser utilizada
@@ -29,12 +35,15 @@ char payload[256];
 ModbusMaster node1; // Endereço Modbus do primeiro MPPT é 1
 ModbusMaster node2; // Endereço Modbus do segundo MPPT é 2
 
+
 ///////////////////
 //Endereço Modbus//
 ///////////////////
 
+
 //número de registradores
 const int NUM_REGISTERS = 33;
+
 
 // Dados em tempo real (somente leitura)
 const int PV_VOLTAGE = 0x3100; // Tensão do painel fotovoltaico
@@ -56,10 +65,12 @@ const int BT_PERCENT = 0x311A; // Porcentagem da capacidade restante da bateria
 const int RMT_BT_TMP = 0x311B; // Temperatura da bateria medida pelo sensor remoto de temperatura
 const int BT_RTD_PWR = 0x311D; // Tensão nominal do sistema atual. 1200, 2400, 3600, 4800 representam 12V，24V，36V，48V
 
+
 // Status em tempo real (somente leitura)
 const int BT_STATUS_ = 0x3200; // Status da bateria
 const int CE_STATUS_ = 0x3201; // Status do equipamento de carregamento
 const int DE_STATUS_ = 0x3202; // Status do equipamento de descarga
+
 
 // Parâmetros Estatísticos (somente leitura)
 const int MAX_PV_VOLTAGE = 0x3300; // Tensão fotovoltaica máxima de entrada hoje
@@ -78,7 +89,9 @@ const int AMBIENT___TEMP = 0x331E; // Temperatura Ambiente
 
 
 
+
 void setup() {
+
 
   // Configuração do LoRa
   //configura os pinos como saida
@@ -89,17 +102,21 @@ void setup() {
   delay(50); 
   digitalWrite(16, HIGH); // enquanto o OLED estiver ligado, GPIO16 deve estar HIGH
 
+
   display.init(); //inicializa o display
   display.flipScreenVertically(); 
   display.setFont(ArialMT_Plain_10); //configura a fonte para um tamanho maior
 
+
   Serial.println("Configuração do módulo LoRa concluída.");
+
 
   delay(1500);
   display.clear(); //apaga todo o conteúdo da tela do display
   
   SPI.begin(SCK,MISO,MOSI,SS); //inicia a comunicação serial com o Lora
   LoRa.setPins(SS,RST,DI00); //configura os pinos que serão utlizados pela biblioteca (deve ser chamado antes do LoRa.begin)
+
 
   //inicializa o Lora com a frequencia específica.
   if (!LoRa.begin(BAND))
@@ -113,6 +130,7 @@ void setup() {
   display.display(); //mostra o conteúdo na tela
   delay(1000);
 
+
   // Configurações do LoRa para maior alcance
   LoRa.setTxPower(20); // Defina o nível de potência adequado para o seu módulo LoRa
   LoRa.setSpreadingFactor(12); // Defina o Spreading Factor (fator de espalhamento) para 12
@@ -120,13 +138,16 @@ void setup() {
   LoRa.setCodingRate4(5); // Defina a taxa de codificação como 5 (4/5)
   LoRa.setPreambleLength(8); // Defina o comprimento do Preamble como 8
   LoRa.setSyncWord(0x12); // Defina a palavra de sincronização como 0x12
-  LoRa.enableCrc(); // Ative o CRC (Cyclic Redundancy Check)
+  LoRa.enableCrc(); // Ative o CRC (Cyclic Redundancy Check)  // Para desativar : void disableCrc(); 
   LoRa.disableInvertIQ(); // Desative a inversão de IQ
+
 
   // Defina o canal desejado (Canal 10)
   LoRa.setFrequency(915E6 + (10 * 500E3));
 
+
   Serial.println("Configuração do módulo LoRa concluída.");
+
 
   // Configuração do Modbus
   MODBUS_SERIAL.begin(MODBUS_BAUDRATE);
@@ -134,11 +155,14 @@ void setup() {
   node2.begin(2, MODBUS_SERIAL); // Endereço Modbus do segundo MPPT é 2
 }
 
+
 void loop() {
+
 
   // Leitura dos valores dos dois MPPTs
   uint16_t values1[NUM_REGISTERS];
   uint16_t values2[NUM_REGISTERS];
+
 
   // Leitura dos valores do primeiro MPPT
   uint8_t result1 = node1.readInputRegisters(PV_VOLTAGE,NUM_REGISTERS);
@@ -148,6 +172,7 @@ void loop() {
     }
   }
 
+
   // Leitura dos valores do segundo MPPT
   uint8_t result2 = node2.readInputRegisters(PV_VOLTAGE,NUM_REGISTERS);
   if (result2 == node2.ku8MBSuccess) {
@@ -155,6 +180,7 @@ void loop() {
       values2[i] = node2.getResponseBuffer(i);
     }
   }
+
 
   // Montagem do pacote de dados a ser enviado via LoRa
   String data_node1 = "";
@@ -192,6 +218,7 @@ void loop() {
   data_node1 += String(values1[30]) + ","; // Total de energia gerada (Alta)
   data_node1 += String(values1[31]) + ","; // Temperatura da bateria
   data_node1 += String(values1[32]); // Temperatura Ambiente
+
 
 
   String data_node2 = "";
@@ -232,6 +259,7 @@ void loop() {
   
 
 
+
  //apaga o conteúdo do display
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -245,8 +273,10 @@ void loop() {
   char payload_node1[256];
   data_node1.toCharArray(payload_node1, 256);
 
+
   char payload_node2[256];
   data_node2.toCharArray(payload_node2, 256);
+
 
   // Envia o pacote LoRa com os dados MPPT1
   //beginPacket : abre um pacote para adicionarmos os dados para envio
@@ -260,10 +290,12 @@ void loop() {
   //incrementa uma unidade no contador
   counter++;
 
+
   digitalWrite(25, HIGH);   // liga o LED indicativo
   delay(500);                       // aguarda 500ms
   digitalWrite(25, LOW);    // desliga o LED indicativo
   delay(500);
+
 
   // Envia o pacote LoRa com os dados MPPT2
   //beginPacket : abre um pacote para adicionarmos os dados para envio
@@ -274,14 +306,19 @@ void loop() {
   //endPacket : fecha o pacote e envia
   LoRa.endPacket(); //retorno= 1:sucesso | 0: falha
 
+
   //incrementa uma unidade no contador
   counter++;
+
 
   digitalWrite(25, HIGH);   // liga o LED indicativo
   delay(500);                       // aguarda 500ms
   digitalWrite(25, LOW);    // desliga o LED indicativo
   delay(500); 
 
-  delay(10000);// Aguarda 10 segundos antes de enviar o proximo pacote de dados
+
+  delay(5000);// Aguarda 5 segundos antes de enviar o proximo pacote de dados
 }
+
+
 
