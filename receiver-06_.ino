@@ -1,5 +1,3 @@
-//Publish com erro e tenho que conferir JSON
-
 #include <LoRa.h>
 #include <SPI.h>
 #include <WiFi.h>
@@ -30,12 +28,16 @@ const char* mqttPassword = "SENHA";
 #define BAND    915E6   // Frequência do rádio - podemos utilizar ainda: 433E6, 868E6, 915E6
 #define PABOOST true
 
+// variaveis
+float values1[33]; // Declare values1 as an array of floats with size 
+float values2[33]; // Declare values2 as an array of floats with size
+
 // Declaração do cliente Wi-Fi e do cliente MQTT
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // Função para dividir uma string em substrings com base em um delimitador
-void splitString(const String& input, char delimiter, String* outputArray, int maxItems) {
+void splitString(const String& input, char delimiter, String* outputArray, int maxItems, bool onlyAlphaNumeric) {
   int itemCount = 0; // Contador de itens
   int startIndex = 0; // Índice inicial da substring
   int endIndex = input.indexOf(delimiter); // Índice final da substring
@@ -43,7 +45,14 @@ void splitString(const String& input, char delimiter, String* outputArray, int m
   // Enquanto houver substrings e não exceder o número máximo de itens
   while (endIndex >= 0 && itemCount < maxItems) {
     // Extrai a substring atual e armazena no array de saída
-    outputArray[itemCount] = input.substring(startIndex, endIndex);
+    String substring = input.substring(startIndex, endIndex);
+
+    if (onlyAlphaNumeric) {
+      // Remove caracteres não alfanuméricos da substring
+      substring.replace("[^a-zA-Z0-9]", "");
+    }
+
+    outputArray[itemCount] = substring;
     itemCount++;
 
     // Atualiza os índices para a próxima substring
@@ -53,7 +62,14 @@ void splitString(const String& input, char delimiter, String* outputArray, int m
 
   // Verifica se há uma última substring após o último delimitador
   if (startIndex < input.length() && itemCount < maxItems) {
-    outputArray[itemCount] = input.substring(startIndex);
+    String substring = input.substring(startIndex);
+
+    if (onlyAlphaNumeric) {
+      // Remove caracteres não alfanuméricos da substring
+      substring.replace("[^a-zA-Z0-9]", "");
+    }
+
+    outputArray[itemCount] = substring;
     itemCount++;
   }
 }
@@ -121,7 +137,6 @@ void setup() {
   }
 }
 
-
 void loop() {
   // Declare the variable receivedData
   String receivedData;
@@ -141,7 +156,7 @@ void loop() {
 
       // Dividir a string em substrings separadas por vírgula
       String values[66];
-      splitString(receivedData, ',', values, 66);
+      splitString(receivedData, ',', values, 66, true);
 
 
       // Verifica se a quantidade de valores é válida
@@ -199,6 +214,7 @@ void publishValues(int values1[], int values2[]) {
                   ", \"GEN_ENERGY_D_H\":" + String(values1[28]) + ", \"GEN_ENERGY_T_L\":" + String(values1[29]) +
                   ", \"GEN_ENERGY_T_H\":" + String(values1[30]) + ", \"BATTERY___TEMP\":" + String(values1[31]) +
                   ", \"AMBIENT___TEMP\":" + String(values1[32]) + "}";
+Serial.println(mppt1DataJson);
 
   String mppt2DataJson;
   mppt2DataJson = "{\"ID\":" + String(2) + ", \"PV_VOLTAGE\":" + String(values2[0]) + ", \"PV_CURRENT\":" + String(values2[1]) +
@@ -216,7 +232,7 @@ void publishValues(int values1[], int values2[]) {
                   ", \"GEN_ENERGY_D_H\":" + String(values2[28]) + ", \"GEN_ENERGY_T_L\":" + String(values2[29]) +
                   ", \"GEN_ENERGY_T_H\":" + String(values2[30]) + ", \"BATTERY___TEMP\":" + String(values2[31]) +
                   ", \"AMBIENT___TEMP\":" + String(values2[32]) + "}";
-
+Serial.println(mppt2DataJson);
   
 
   // Publica os valores no tópico MQTT
